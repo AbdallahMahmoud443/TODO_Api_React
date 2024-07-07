@@ -8,7 +8,7 @@ interface IAuthenticatedQuery {
     config?: AxiosRequestConfig
 
 }
-// Custom Hook
+// Custom Hook To 
 const userAuthenticatedQuery = ({queryKey,url,config}:IAuthenticatedQuery)=>{
     return useQuery({
         queryKey, // this key  used in caching data

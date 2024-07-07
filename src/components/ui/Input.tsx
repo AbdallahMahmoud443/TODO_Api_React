@@ -8,7 +8,7 @@ interface IProps extends InputHTMLAttributes<HTMLInputElement>{
 const Input = forwardRef(({...rest}: IProps,ref:Ref<HTMLInputElement>) => { 
     return (
         <>
-        <input ref ={ref} className="border-[1px] shadow-sm border-gray-300  text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 focus:outline-none block w-full p-2.5"  {...rest}/>
+        <input ref ={ref} className="border-[1px] shadow-sm border-gray-300  text-gray-900 text-sm rounded-lg focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 block w-full p-2.5"  {...rest}/>
         </>
     );
 });
