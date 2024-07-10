@@ -1,17 +1,11 @@
-import {
-  JSXElementConstructor,
-  Key,
-  ReactElement,
-  ReactNode,
-  ReactPortal,
-  useState,
-} from "react";
+import { useState } from "react";
 import Button from "./ui/Button";
 import userAuthenticatedQuery from "../hooks/useAuthenticatedQuery";
 import { ITodo } from "../interfaces";
 import Modal from "./ui/Modal";
 import Input from "./ui/Input";
 import Textarea from "./ui/Textarea";
+import axiosInstance from "../config/axios.config";
 
 const TodoList = () => {
   const storageKey = "loggedInUser";
@@ -19,17 +13,19 @@ const TodoList = () => {
   const userData = userDataItem ? JSON.parse(userDataItem) : null;
 
   //* status for store fetched todos
-  const [todos, setTodos] = useState([]);
-  const [isEditModelOpen, setEditModelOpen] = useState<boolean>(false);
-  const [todoDataEdit,setTodoDataEdit] = useState<ITodo>({
-    id:0,
-    title:"",
-    description:""
-  });
+  const [isEditModelOpen, setEditModelOpen] = useState<boolean>(false); // open & close edit model
+  const [todoDataEdit, setTodoDataEdit] = useState<ITodo>({
+    id: 0,
+    title: "",
+    description: "",
+  }); // data will editbale by edit form
+  const [isUpdating, setIsUpdating] = useState<boolean>(false); // Realted With Spinner on edit button
+  // const [queryVersion,setQueryVersion] = useState<number>(1);
 
   //* Fetch Data using useQuery() hook
   const { isPending, error, data } = userAuthenticatedQuery({
-    queryKey: ["todo"],
+    //** todoList-id any chnage in queryKey (useQuery Will Fetch Data Again) unique Keys*/
+    queryKey: [`todoList`,`${todoDataEdit.id}`], 
     url: "/users/me?populate=todos",
     config: {
       headers: {
@@ -50,19 +46,59 @@ const TodoList = () => {
     );
 
   //* Handers
-
-  // realted with edit model
-  const openEditeModel = (todo:ITodo) => {
+  // Related with edit model
+  const openEditeModel = (todo: ITodo) => {
     setEditModelOpen(true);
     setTodoDataEdit(todo); // send data of todo to state to display it in fields
   };
   const closeEditeModel = () => {
     setEditModelOpen(false);
     setTodoDataEdit({
-      id:0,
-      title:"",
-      description:""
+      id: 0,
+      title: "",
+      description: "",
     }); // reset data for fields
+  };
+
+  // Related with Field of Edit Model
+  const onChangeHandler = (
+    event:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    const { name, value } = event.target;
+    setTodoDataEdit({
+      ...todoDataEdit,
+      [name]: value,
+    });
+  };
+
+  // Related with Field of Edit Model
+  const submitHandler = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsUpdating(true); // to run loader in button
+    const { title, description } = todoDataEdit;
+    try {
+    
+      const res = await axiosInstance.put(
+        `/todos/${todoDataEdit.id}`,
+        { data: { title, description } },
+        {
+          headers: {
+            Authorization: `Bearer ${userData?.jwt}`,
+          },
+        }
+      );
+      if (res.status === 200) {
+        // setQueryVersion(prev => prev +1) // change in this state to refetch data based on changing in querykey
+        closeEditeModel(); // to close model after updating
+      }
+      console.log(res);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsUpdating(false); // stop loading spinner
+    }
   };
 
   return (
@@ -77,7 +113,11 @@ const TodoList = () => {
           >
             <p className="w-full font-semibold">{todo.title}</p>
             <div className="flex items-center justify-end w-full space-x-3">
-              <Button variant={"default"} size={"sm"} onClick={()=>openEditeModel(todo)}>
+              <Button
+                variant={"default"}
+                size={"sm"}
+                onClick={() => openEditeModel(todo)}
+              >
                 Edit
               </Button>
               <Button variant={"danger"} size={"sm"}>
@@ -95,18 +135,30 @@ const TodoList = () => {
         closeModal={closeEditeModel}
         title="Edit Todo"
       >
-        <div className="flex flex-col justify-center space-y-2">
-          <Input placeholder="Edit Todo" value={todoDataEdit.title}/>
-          <Textarea placeholder="Edit Description" value={todoDataEdit.description}/>
-        </div>
-        <div className="flex space-x-2 mt-4">
-        <Button variant={"default"} size={"sm"}>
-          Edit Todo
-        </Button>
-        <Button variant={"cancel"} size={"sm"} onClick={closeEditeModel}>
-          Cancel
-        </Button>
-        </div>
+        <form className="" onSubmit={submitHandler}>
+          <div className="flex flex-col justify-center space-y-2">
+            <Input
+              name="title"
+              placeholder="Edit Todo"
+              value={todoDataEdit.title}
+              onChange={onChangeHandler}
+            />
+            <Textarea
+              name="description"
+              placeholder="Edit Description"
+              value={todoDataEdit.description}
+              onChange={onChangeHandler}
+            />
+          </div>
+          <div className="flex space-x-2 mt-4">
+            <Button variant={"default"} size={"sm"} isLoading={isUpdating}>
+              Edit Todo
+            </Button>
+            <Button variant={"cancel"} size={"sm"} onClick={closeEditeModel}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
