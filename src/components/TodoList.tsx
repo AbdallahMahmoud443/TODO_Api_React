@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Button from "./ui/Button";
-import userAuthenticatedQuery from "../hooks/useAuthenticatedQuery";
+import useCustomHook from "../hooks/useAuthenticatedQuery";
 import { ITodo } from "../interfaces";
 import Modal from "./ui/Modal";
 import Input from "./ui/Input";
@@ -36,8 +36,15 @@ const TodoList = () => {
     description: "",
   });
 
+  // Add New Todo
+  const [addModelOpen, setAddModelOpen] = useState<boolean>(false);
+  const [addTodoData, setAddTodoData] = useState<ITodo>({
+    title: "",
+    description: "",
+  });
+
   //* Fetch Data using useQuery() hook
-  const { isPending, error, data } = userAuthenticatedQuery({
+  const { isPending, error, data } = useCustomHook({
     //** todoList-id any chnage in queryKey (useQuery Will Fetch Data Again) unique Keys*/
     queryKey: [`todoList`, `${queryVersion}`],
     url: "/users/me?populate=todos",
@@ -47,16 +54,16 @@ const TodoList = () => {
       },
     },
   });
-  
-  // return Skeleton while fetching data
-  if (isPending) return (
-    <div className="space-y-2">
-    {Array.from({length:3},(_,inx)=>(
-      <TodoSkeleton key={inx}/>
-    ))}
-    </div>
 
-  );
+  // return Skeleton while fetching data
+  if (isPending)
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 3 }, (_, inx) => (
+          <TodoSkeleton key={inx} />
+        ))}
+      </div>
+    );
   /* return paragraph contain error while occurring error (error)=> is server error example forbidden
      and for client side error (error page in rounting will apear when cause error)
   */
@@ -99,6 +106,22 @@ const TodoList = () => {
     });
   };
 
+  const openAddModel = () => {
+    setAddModelOpen(true);
+    setError({
+      title: "",
+      description: "",
+    });
+  };
+
+  const closeAddModel = () => {
+    setAddModelOpen(false);
+    setAddTodoData({
+      title: "",
+      description: "",
+    });
+  };
+
   // Related with Field of Edit Model
   const onChangeHandler = (
     event:
@@ -108,6 +131,20 @@ const TodoList = () => {
     const { name, value } = event.target;
     setTodoDataEdit({
       ...todoDataEdit,
+      [name]: value,
+    });
+    setError({ ...errors, [name]: "" }); //* to show error when write error will disappear important
+  };
+
+  // Related with Field of Add Model
+  const onChangeHandlerAddition = (
+    event:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    const { name, value } = event.target;
+    setAddTodoData({
+      ...addTodoData,
       [name]: value,
     });
     setError({ ...errors, [name]: "" }); //* to show error when write error will disappear important
@@ -173,10 +210,55 @@ const TodoList = () => {
       console.log(error);
     }
   };
+  // Related with Field of Edit Model (Update Todo)
+  const submitHandlerAddition = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+    setIsUpdating(true); // to run loader in button
+    const { title, description } = addTodoData;
 
+    const errors = todoValidation({ title, description });
+    const hasErrorMessage =
+      Object.values(errors).some((error) => error === "") &&
+      Object.values(errors).every((error) => error === "");
+    if (hasErrorMessage) {
+      try {
+        const res = await axiosInstance.post(
+          `/todos`,
+          { data: { title, description } },
+          {
+            headers: {
+              Authorization: `Bearer ${userData?.jwt}`,
+            },
+          }
+        );
+        if (res.status === 200) {
+          setQueryVersion((prev) => prev + 1); // change in this state to refetch data based on changing in querykey
+          closeAddModel(); // close model and reset fields
+        }
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsUpdating(false); // stop loading spinner
+      }
+    } else {
+      setError(errors);
+      setIsUpdating(false);
+      return;
+    }
+  };
   return (
-    <div className="space-y-1 ">
+    <div className="space-y-2">
+      <Button variant={"default"} className="mb-5" onClick={openAddModel}>
+        Add New Todo
+      </Button>
       {/* Display Todo */}
+      {/**
+       * Note
+       * (Reverse Method) => don't work directly with data comes from API , data should store in state and used reverse method with state data.todos.reverse().map
+       *
+       */}
       {data.todos.length ? (
         data.todos.map((todo: ITodo) => (
           <div
@@ -208,7 +290,7 @@ const TodoList = () => {
       ) : (
         <p className="w-full font-semibold">Not found Todos yet....😌</p>
       )}
-      {/* Create Model To Edit Tod */}
+      {/* Create Model To Edit Todo */}
       <Modal
         isOpen={isEditModelOpen}
         closeModal={closeEditeModel}
@@ -235,12 +317,18 @@ const TodoList = () => {
             <Button variant={"default"} size={"sm"} isLoading={isUpdating}>
               Edit Todo
             </Button>
-            <Button variant={"cancel"} size={"sm"} onClick={closeEditeModel}>
+            <Button
+              variant={"cancel"}
+              size={"sm"}
+              onClick={closeEditeModel}
+              type={"button"}
+            >
               Cancel
             </Button>
           </div>
         </form>
       </Modal>
+
       {/** Delete Model */}
       <Modal
         isOpen={deleteModelOpen}
@@ -252,10 +340,49 @@ const TodoList = () => {
           <Button variant={"danger"} onClick={deleteTodoHandler}>
             Yes, remove
           </Button>
-          <Button onClick={closeDeleteModel} variant={"cancel"}>
+          <Button onClick={closeDeleteModel} variant={"cancel"} type={"button"}>
             Cancel
           </Button>
         </div>
+      </Modal>
+
+      {/* Create Model To Add Todo */}
+      <Modal
+        isOpen={addModelOpen}
+        closeModal={closeAddModel}
+        title="Add New Todo"
+      >
+        <form className="" onSubmit={submitHandlerAddition}>
+          <div className="flex flex-col justify-center space-y-2">
+            <Input
+              name="title"
+              placeholder="Add Todo"
+              value={addTodoData.title}
+              onChange={onChangeHandlerAddition}
+            />
+            <InputErrorMessage msg={errors["title"]} />
+            <Textarea
+              name="description"
+              placeholder="Add Description"
+              value={addTodoData.description}
+              onChange={onChangeHandlerAddition}
+            />
+            <InputErrorMessage msg={errors["description"]} />
+          </div>
+          <div className="flex space-x-2 mt-4">
+            <Button variant={"default"} size={"sm"} isLoading={isUpdating}>
+              Add Todo
+            </Button>
+            <Button
+              variant={"cancel"}
+              size={"sm"}
+              onClick={closeAddModel}
+              type={"button"}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

@@ -8,7 +8,7 @@ interface IAuthenticatedQuery {
   config?: AxiosRequestConfig;
 }
 // Custom Hook To
-const userAuthenticatedQuery = ({
+const useCustomHook = ({
   queryKey,
   url,
   config,
@@ -22,4 +22,4 @@ const userAuthenticatedQuery = ({
   });
 };
 
-export default userAuthenticatedQuery;
+export default useCustomHook;
