@@ -14,12 +14,14 @@ const TodosPage = () => {
   const [queryVersion, setQueryVersion] = useState<number>(1); // Related with react Query
   // Page State Realated with pagination
   const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [sortBy, setSortBy] = useState<string>("ASC");
 
   //* Fetch Data using useQuery() hook
   const { isPending, error, data, isFetching } = useCustomHook({
     //** todoList-id any chnage in queryKey (useQuery Will Fetch Data Again) unique Keys*/
-    queryKey: [`todosPage-${page}-${queryVersion}`],
-    url: `/todos?pagination[pageSize]=10&pagination[page]=${page}`, // Pagination
+    queryKey: [`todosPage-${page}-${queryVersion}-${pageSize}-${sortBy}`],
+    url: `/todos?pagination[pageSize]=${pageSize}&pagination[page]=${page}&sort=createdAt:${sortBy}`, // Pagination
     config: {
       headers: {
         Authorization: `Bearer ${userData?.jwt}`,
@@ -81,13 +83,46 @@ const TodosPage = () => {
     }
     setQueryVersion((prev) => prev + 1); // change in this state to refetch data based on changing in querykey
   };
+  const onChangeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPageSize(+e.target.value);
+  };
+  const onChangeSortBy = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(e.target.value);
+  };
   return (
-    
     <div className="space-y-4 my-6">
-      <div>
-      <Button variant={"default"} size={"sm"} onClick={GenerateFakeTodos}>
-            Generate Fake Todos
-          </Button>
+      <div className="flex justify-between">
+        <Button variant={"default"} size={"sm"} onClick={GenerateFakeTodos}>
+          Generate Fake Todos
+        </Button>
+        <div className="flex space-x-3">
+          <span className="p-2  text-gray-600">PageSize:</span>
+          <select
+            className="border-[1px] shadow-sm border-gray-300  text-gray-900 text-sm rounded-lg
+           focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 block w-fit p-2"
+            onChange={onChangeSelect}
+            value={pageSize}
+            
+          >
+            <option disabled>PageSize</option>
+            <option value={20}>20</option>
+            <option value={40}>40</option>
+            <option value={60}>60</option>
+            <option value={80}>80</option>
+            <option value={100}>100</option>
+          </select>
+          <span className="p-2  text-gray-600">Sorting:</span>
+          <select
+            className="border-[1px] shadow-sm border-gray-300  text-gray-900 text-sm rounded-lg
+           focus:border-indigo-600 focus:outline-none focus:ring-1 focus:ring-indigo-600 block w-fit p-2"
+            onChange={onChangeSortBy}
+            value={sortBy}
+          >
+            <option disabled>Sorting</option>
+            <option value={"ASC"}>Latest</option>
+            <option value={"DESC"}>Oldest</option>
+          </select>
+        </div>
       </div>
       {data.data.length ? (
         data.data.map(
@@ -120,7 +155,6 @@ const TodosPage = () => {
         total={data.meta.pagination.total}
         // isPending => get new data (loading), isfetching => get cashing data (loading
         isloading={isPending || isFetching}
-
       />
     </div>
   );
