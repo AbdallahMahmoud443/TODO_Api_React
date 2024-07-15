@@ -9,7 +9,7 @@ import axiosInstance from "../config/axios.config";
 import todoValidation from "../validation/TodoValidation";
 import InputErrorMessage from "./ui/InputErrorMessage";
 import TodoSkeleton from "./TodoSkeleton";
-
+import { faker } from "@faker-js/faker";
 const TodoList = () => {
   const storageKey = "loggedInUser";
   const userDataItem = localStorage.getItem(storageKey);
@@ -164,7 +164,7 @@ const TodoList = () => {
       try {
         const res = await axiosInstance.put(
           `/todos/${todoDataEdit.id}`,
-          { data: { title, description } },
+          { data: { title, description, user: [userData.user?.id] } },
           {
             headers: {
               Authorization: `Bearer ${userData?.jwt}`,
@@ -226,7 +226,7 @@ const TodoList = () => {
       try {
         const res = await axiosInstance.post(
           `/todos`,
-          { data: { title, description } },
+          { data: { title, description, user: [userData.user?.id] } },
           {
             headers: {
               Authorization: `Bearer ${userData?.jwt}`,
@@ -248,11 +248,53 @@ const TodoList = () => {
       return;
     }
   };
+  // Related with Generate Fake Todos
+  const GenerateFakeTodos = async () => {
+    for (let index = 0; index < 20; index++) {
+      try {
+        const { data } = await axiosInstance.post(
+          `/todos`,
+          {
+            data: {
+              title: faker.word.words(4),
+              description: faker.lorem.paragraphs(1),
+              user: [userData.user?.id],
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${userData?.jwt}`,
+            },
+          }
+        );
+        console.log(data);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+    setQueryVersion((prev) => prev + 1); // change in this state to refetch data based on changing in querykey
+  };
+
   return (
     <div className="space-y-2">
-      <Button variant={"default"} className="mb-5" onClick={openAddModel}>
-        Add New Todo
-      </Button>
+      {isPending ? (
+        <div className="flex items-center justify-center">
+          <div className="flex items-center space-x-2">
+            <div className=" w-40 h-12 bg-gray-300 rounded-md dark:bg-gray-200"></div>
+            <div className=" w-40 h-12 bg-gray-300 rounded-md dark:bg-gray-200"></div>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-3 flex justify-center space-x-3">
+          <Button variant={"default"} onClick={openAddModel} size={"sm"}>
+            Add New Todo
+          </Button>
+          <Button variant={"outline"} size={"sm"} onClick={GenerateFakeTodos}>
+            Generate Fake Todos
+          </Button>
+        </div>
+      )}
+
       {/* Display Todo */}
       {/**
        * Note
